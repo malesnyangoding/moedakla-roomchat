@@ -1,7 +1,7 @@
 // Main Application Logic
 
 // Config - Ganti nomor WhatsApp di sini
-const WHATSAPP_NUMBER = '6281234567890'; // Ganti dengan nomor WA yang dituju (format: 62xxx)
+const WHATSAPP_NUMBER = '6285727942871'; // Ganti dengan nomor WA yang dituju (format: 62xxx)
 
 document.addEventListener('DOMContentLoaded', () => {
     // Elements
@@ -149,4 +149,5 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
 });
