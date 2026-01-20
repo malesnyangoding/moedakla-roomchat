@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Anonymous Chat</title>
+    
+    <!-- Link CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/profile.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- Gradient Orbs -->
+    <div class="gradient-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Profile Container -->
+    <div class="profile-container">
+        <!-- Header -->
+        <div class="profile-header">
+            <button class="back-btn" id="backBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <h2>Edit Profile</h2>
+            <div style="width: 45px;"></div>
+        </div>
+
+        <!-- Avatar Section -->
+        <div class="avatar-section">
+            <div class="profile-avatar">
+                <img id="avatarImage" src="" alt="" style="display: none; width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                <span id="profileInitial">R</span>
+                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                <button class="avatar-edit-btn" id="avatarEditBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+            </div>
+            <p class="profile-class" id="profileClass">Kelas XII</p>
+        </div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            <form id="profileForm">
+                <!-- Username Field -->
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-with-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <input type="text" id="username" placeholder="Masukkan username baru" required>
+                    </div>
+                </div>
+
+                <!-- Current Password Field -->
+                <div class="form-group">
+                    <label>Password Lama</label>
+                    <div class="input-with-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <input type="password" id="currentPassword" placeholder="Masukkan password lama">
+                        <button type="button" class="toggle-password" data-target="currentPassword">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- New Password Field -->
+                <div class="form-group">
+                    <label>Password Baru</label>
+                    <div class="input-with-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <input type="password" id="newPassword" placeholder="Masukkan password baru (opsional)">
+                        <button type="button" class="toggle-password" data-target="newPassword">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <small class="help-text">Kosongkan jika tidak ingin mengubah password</small>
+                </div>
+
+                <!-- Confirm Password Field -->
+                <div class="form-group">
+                    <label>Konfirmasi Password Baru</label>
+                    <div class="input-with-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <input type="password" id="confirmPassword" placeholder="Konfirmasi password baru">
+                        <button type="button" class="toggle-password" data-target="confirmPassword">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Password Strength Indicator -->
+                <div class="password-strength" id="passwordStrength" style="display: none;">
+                    <div class="strength-label">Password Strength:</div>
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strengthFill"></div>
+                    </div>
+                    <div class="strength-text" id="strengthText">Weak</div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="save-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Simpan Perubahan
+                </button>
+            </form>
+        </div>
+
+        <!-- Account Stats -->
+        <div class="account-stats">
+            <div class="stat-item">
+                <div class="stat-icon">📅</div>
+                <div class="stat-info">
+                    <span class="stat-label">Member Since</span>
+                    <span class="stat-value" id="memberSince">Jan 2026</span>
+                </div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-icon">💬</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Messages</span>
+                    <span class="stat-value" id="totalMessages">127</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="danger-zone">
+            <h3>Danger Zone</h3>
+            <button class="delete-account-btn" id="deleteAccountBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Hapus Akun
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Notification -->
+    <div class="notification" id="notification" style="display: none;">
+        <div class="notification-content">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span id="notificationText">Perubahan berhasil disimpan!</span>
+        </div>
+    </div>
+
+    <!-- Avatar Crop Modal -->
+    <div class="crop-modal" id="cropModal" style="display: none;">
+        <div class="crop-modal-content">
+            <h3>Crop Profile Picture</h3>
+            <div class="crop-container">
+                <canvas id="cropCanvas"></canvas>
+            </div>
+            <div class="crop-controls">
+                <button class="crop-cancel" id="cropCancelBtn">Cancel</button>
+                <button class="crop-save" id="cropSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link JavaScript -->
+    <script src="js/utils.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html>
