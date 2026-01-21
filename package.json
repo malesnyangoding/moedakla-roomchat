@@ -1,6 +1,14 @@
 {
-  "type": "module",
+  "name": "moedakla-roomchat",
+  "version": "1.0.0",
+  "description": "Anonymous Room Chat Application",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev"
+  },
   "dependencies": {
-    "@vercel/postgres": "^0.5.1"
+    "@vercel/postgres": "^0.10.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2"
   }
 }
