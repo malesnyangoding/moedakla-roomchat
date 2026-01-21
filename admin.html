@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Register User</title>
+</head>
+<body>
+    <h1>Register New User</h1>
+    <form id="registerForm">
+        <input type="password" id="adminKey" placeholder="Admin Key" required>
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <select id="kelas" required>
+            <option value="">Pilih Kelas</option>
+            <option value="X">Kelas X</option>
+            <option value="XI">Kelas XI</option>
+            <option value="XII">Kelas XII</option>
+        </select>
+        <button type="submit">Register User</button>
+    </form>
+
+    <script type="module">
+        import { API_ENDPOINTS, apiCall } from './js/config.js';
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                adminKey: document.getElementById('adminKey').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                kelas: document.getElementById('kelas').value
+            };
+
+            try {
+                const response = await apiCall(API_ENDPOINTS.REGISTER, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                if (response.success) {
+                    alert('User berhasil didaftarkan!');
+                    e.target.reset();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
