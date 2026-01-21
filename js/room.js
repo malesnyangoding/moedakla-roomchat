@@ -6,6 +6,16 @@ let dailyBalance = 20;
 let isRecording = false;
 let recordingTimer = null;
 let recordingSeconds = 0;
+let messagePollingInterval = null;
+
+// API Configuration
+const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api'
+    : `${window.location.origin}/api`;
+
+function getAuthToken() {
+    return localStorage.getItem('authToken');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Get room from URL parameter
@@ -23,7 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize page
     initializePage();
-    loadMessages();
+    loadMessagesFromAPI();
+    startMessagePolling();
     startOnlineCountUpdate();
     
     // Event listeners
@@ -39,14 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('voiceCancelBtn').addEventListener('click', cancelVoiceRecording);
     document.getElementById('voiceSendBtn').addEventListener('click', sendVoiceMessage);
     
-    // Click outside modals to close
     document.getElementById('infoModal').addEventListener('click', (e) => {
         if (e.target.id === 'infoModal') hideInfoModal();
     });
 });
 
 function initializePage() {
-    // Set room name
     const roomNames = {
         'all-class': 'All Class',
         'kelas-x': 'Kelas X',
@@ -59,64 +68,86 @@ function initializePage() {
     document.getElementById('modalRoomName').textContent = roomName;
     document.getElementById('modalUserClass').textContent = userClass;
     
-    // Check if user is in their own class
     const isOwnClass = currentRoom === `kelas-${userClass.toLowerCase()}`;
     
     if (!isOwnClass) {
-        // Show balance bar
         document.getElementById('balanceBar').style.display = 'block';
         document.getElementById('balanceInfo').style.display = 'flex';
         
-        // Load balance from localStorage
-        const savedBalance = getFromLocalStorage(`balance_${currentRoom}`);
-        if (savedBalance) {
-            dailyBalance = savedBalance.balance;
-            const lastReset = savedBalance.lastReset;
-            const now = new Date().getTime();
-            const hoursPassed = (now - lastReset) / (1000 * 60 * 60);
-            
-            // Reset balance if 24 hours passed
-            if (hoursPassed >= 24) {
-                dailyBalance = 20;
-                saveBalance();
-            }
-        }
-        
-        updateBalanceDisplay();
+        loadBalanceFromAPI();
         startResetTimer();
     }
 }
 
-function loadMessages() {
-    const container = document.getElementById('messagesContainer');
-    
-    // Load saved messages from localStorage
-    const savedMessages = getFromLocalStorage(`messages_${currentRoom}`) || [];
-    
-    if (savedMessages.length === 0) {
-        // Add welcome message
-        addMessage('System', 'Welcome to the chat! Be respectful and have fun! 🎉', false, true);
-    } else {
-        savedMessages.forEach(msg => {
-            addMessage(msg.username, msg.text, msg.isOwn, false, msg.isVoice, msg.duration);
+async function loadBalanceFromAPI() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/user/balance?room=${currentRoom}`, {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`
+            }
         });
+        
+        if (response.ok) {
+            const data = await response.json();
+            dailyBalance = data.balance;
+            updateBalanceDisplay();
+        }
+    } catch (error) {
+        console.error('Load balance error:', error);
     }
-    
-    // Scroll to bottom
-    container.scrollTop = container.scrollHeight;
 }
 
-function addMessage(username, text, isOwn = false, save = true, isVoice = false, duration = '0:00') {
+async function loadMessagesFromAPI() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/get?room=${currentRoom}`, {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            
+            if (data.messages.length === 0) {
+                addMessage('System', 'Welcome to the chat! Be respectful and have fun! 🎉', false, false, true);
+            } else {
+                data.messages.forEach(msg => {
+                    const isOwn = msg.user_id === data.currentUserId;
+                    addMessageToUI(msg.username, msg.message_text, isOwn, msg.is_voice, msg.voice_duration, msg.avatar);
+                });
+            }
+            
+            container.scrollTop = container.scrollHeight;
+        }
+    } catch (error) {
+        console.error('Load messages error:', error);
+    }
+}
+
+function startMessagePolling() {
+    // Poll for new messages every 3 seconds
+    messagePollingInterval = setInterval(loadMessagesFromAPI, 3000);
+}
+
+function addMessageToUI(username, text, isOwn = false, isVoice = false, duration = '0:00', avatar = null) {
     const container = document.getElementById('messagesContainer');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isOwn ? 'own' : ''}`;
     
-    const avatar = username === 'System' ? 'S' : 'A';
+    let avatarContent = 'A';
+    if (avatar) {
+        avatarContent = `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    } else {
+        avatarContent = username.charAt(0).toUpperCase();
+    }
+    
     const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     
     if (isVoice) {
         messageDiv.innerHTML = `
-            <div class="message-avatar">${avatar}</div>
+            <div class="message-avatar">${avatarContent}</div>
             <div class="message-content">
                 <div class="message-header">
                     <span class="message-username">${username}</span>
@@ -134,7 +165,7 @@ function addMessage(username, text, isOwn = false, save = true, isVoice = false,
         `;
     } else {
         messageDiv.innerHTML = `
-            <div class="message-avatar">${avatar}</div>
+            <div class="message-avatar">${typeof avatarContent === 'string' && avatarContent.includes('<img') ? avatarContent : `<span>${avatarContent}</span>`}</div>
             <div class="message-content">
                 <div class="message-header">
                     <span class="message-username">${username}</span>
@@ -146,90 +177,70 @@ function addMessage(username, text, isOwn = false, save = true, isVoice = false,
     }
     
     container.appendChild(messageDiv);
-    container.scrollTop = container.scrollHeight;
-    
-    // Save message with 100 message limit
-    if (save && username !== 'System') {
-        let messages = getFromLocalStorage(`messages_${currentRoom}`) || [];
-        messages.push({
-            username: isOwn ? 'You' : username,
-            text,
-            isOwn,
-            isVoice,
-            duration,
-            timestamp: new Date().getTime()
-        });
-        
-        // Keep only last 100 messages
-        if (messages.length > 100) {
-            messages = messages.slice(-100);
-        }
-        
-        saveToLocalStorage(`messages_${currentRoom}`, messages);
-    }
 }
 
-function sendMessage() {
+async function sendMessage() {
     const input = document.getElementById('messageInput');
     const text = input.value.trim();
     
     if (!text) return;
     
-    // Check balance
     const isOwnClass = currentRoom === `kelas-${userClass.toLowerCase()}`;
     if (!isOwnClass && dailyBalance <= 0) {
         alert('Balance habis! Tunggu reset besok atau chat di room kelas kamu.');
         return;
     }
     
-    // Show typing indicator briefly
-    showTypingIndicator();
+    // Disable input while sending
+    input.disabled = true;
+    document.getElementById('sendBtn').disabled = true;
     
-    setTimeout(() => {
-        hideTypingIndicator();
-        addMessage('You', text, true);
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: JSON.stringify({
+                roomType: currentRoom,
+                messageText: text,
+                isVoice: false
+            })
+        });
         
-        // Decrease balance if not in own class
-        if (!isOwnClass) {
-            dailyBalance--;
-            updateBalanceDisplay();
-            saveBalance();
+        if (response.ok) {
+            input.value = '';
+            updateCharCount();
+            
+            // Reload messages
+            await loadMessagesFromAPI();
+            
+            // Update balance
+            if (!isOwnClass) {
+                await loadBalanceFromAPI();
+            }
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Gagal kirim pesan');
         }
-        
-        // Simulate random response
-        setTimeout(() => {
-            showTypingIndicator();
-            setTimeout(() => {
-                hideTypingIndicator();
-                const responses = [
-                    'Haha setuju banget!',
-                    'Bener juga sih',
-                    'Wah menarik tuh',
-                    'Gw juga gitu kok',
-                    'Thanks infonya!'
-                ];
-                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                addMessage('Anonymous', randomResponse, false);
-            }, 1000);
-        }, 2000);
-    }, 500);
-    
-    input.value = '';
-    updateCharCount();
+    } catch (error) {
+        console.error('Send message error:', error);
+        alert('Gagal kirim pesan. Cek koneksi internet.');
+    } finally {
+        input.disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+    }
 }
 
 function toggleVoiceRecording() {
-    const voiceBtn = document.getElementById('voiceBtn');
-    
     if (!isRecording) {
-        // Check balance
         const isOwnClass = currentRoom === `kelas-${userClass.toLowerCase()}`;
         if (!isOwnClass && dailyBalance <= 0) {
             alert('Balance habis! Tunggu reset besok atau chat di room kelas kamu.');
             return;
         }
         
-        // Request microphone permission
         requestMicrophonePermission();
     } else {
         stopVoiceRecording();
@@ -239,11 +250,8 @@ function toggleVoiceRecording() {
 async function requestMicrophonePermission() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // Permission granted, start recording
-        stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+        stream.getTracks().forEach(track => track.stop());
         startVoiceRecording();
-        
     } catch (error) {
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
             alert('❌ Akses mikrofon ditolak!\n\nUntuk mengirim pesan suara, izinkan akses mikrofon di pengaturan browser kamu.');
@@ -263,7 +271,6 @@ function startVoiceRecording() {
     document.getElementById('voiceBtn').classList.add('recording');
     document.getElementById('voiceModal').style.display = 'flex';
     
-    // Start timer
     recordingTimer = setInterval(() => {
         recordingSeconds++;
         const minutes = Math.floor(recordingSeconds / 60);
@@ -271,7 +278,6 @@ function startVoiceRecording() {
         document.getElementById('voiceTimer').textContent = 
             `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         
-        // Auto stop at 60 seconds
         if (recordingSeconds >= 60) {
             sendVoiceMessage();
         }
@@ -291,7 +297,7 @@ function cancelVoiceRecording() {
     document.getElementById('voiceTimer').textContent = '00:00';
 }
 
-function sendVoiceMessage() {
+async function sendVoiceMessage() {
     if (recordingSeconds === 0) return;
     
     stopVoiceRecording();
@@ -301,15 +307,35 @@ function sendVoiceMessage() {
     const seconds = recordingSeconds % 60;
     const duration = `${minutes}:${String(seconds).padStart(2, '0')}`;
     
-    // Add voice message
-    addMessage('You', '', true, true, true, duration);
-    
-    // Decrease balance if not in own class
-    const isOwnClass = currentRoom === `kelas-${userClass.toLowerCase()}`;
-    if (!isOwnClass) {
-        dailyBalance--;
-        updateBalanceDisplay();
-        saveBalance();
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: JSON.stringify({
+                roomType: currentRoom,
+                messageText: '',
+                isVoice: true,
+                voiceDuration: duration
+            })
+        });
+        
+        if (response.ok) {
+            await loadMessagesFromAPI();
+            
+            const isOwnClass = currentRoom === `kelas-${userClass.toLowerCase()}`;
+            if (!isOwnClass) {
+                await loadBalanceFromAPI();
+            }
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Gagal kirim voice message');
+        }
+    } catch (error) {
+        console.error('Send voice error:', error);
+        alert('Gagal kirim voice message');
     }
     
     recordingSeconds = 0;
@@ -317,7 +343,6 @@ function sendVoiceMessage() {
 }
 
 function playVoiceMessage(button) {
-    // Simulate playing voice message
     const svg = button.querySelector('svg');
     const isPlaying = button.classList.contains('playing');
     
@@ -325,7 +350,6 @@ function playVoiceMessage(button) {
         button.classList.add('playing');
         svg.innerHTML = '<rect x="6" y="4" width="4" height="16" fill="white"></rect><rect x="14" y="4" width="4" height="16" fill="white"></rect>';
         
-        // Auto stop after duration (simulated)
         setTimeout(() => {
             button.classList.remove('playing');
             svg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon>';
@@ -357,28 +381,14 @@ function updateBalanceDisplay() {
     document.getElementById('modalBalance').textContent = `${dailyBalance}/20`;
 }
 
-function saveBalance() {
-    saveToLocalStorage(`balance_${currentRoom}`, {
-        balance: dailyBalance,
-        lastReset: new Date().getTime()
-    });
-}
-
 function startResetTimer() {
-    const savedBalance = getFromLocalStorage(`balance_${currentRoom}`);
-    if (!savedBalance) return;
-    
     setInterval(() => {
-        const now = new Date().getTime();
-        const lastReset = savedBalance.lastReset;
-        const timeDiff = 24 * 60 * 60 * 1000 - (now - lastReset);
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
         
-        if (timeDiff <= 0) {
-            dailyBalance = 20;
-            updateBalanceDisplay();
-            saveBalance();
-            return;
-        }
+        const timeDiff = tomorrow - now;
         
         const hours = Math.floor(timeDiff / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -409,5 +419,13 @@ function hideInfoModal() {
 }
 
 function goBack() {
+    clearInterval(messagePollingInterval);
     window.location.href = 'chat.html';
 }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+    }
+});
