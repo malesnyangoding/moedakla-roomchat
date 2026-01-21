@@ -1,5 +1,10 @@
 /* Chat Page Specific Styles */
 
+body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* Gradient Orbs Background */
 .gradient-orbs {
     position: fixed;
