@@ -3,6 +3,11 @@
 // Config - Ganti nomor WhatsApp di sini
 const WHATSAPP_NUMBER = '6281234567890'; // Ganti dengan nomor WA yang dituju (format: 62xxx)
 
+// API Configuration
+const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api'
+    : `${window.location.origin}/api`;
+
 document.addEventListener('DOMContentLoaded', () => {
     // Elements
     const tabs = document.querySelectorAll('.tab');
@@ -19,36 +24,28 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.addEventListener('click', () => {
             const tabType = tab.getAttribute('data-tab');
             
-            // Prevent clicking the same tab
             if (currentTab === tabType) return;
 
-            // Update active tab
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
 
-            // Move slider with smooth animation
             if (tabType === 'register') {
                 tabSlider.style.transform = 'translateX(calc(100% + 5px))';
             } else {
                 tabSlider.style.transform = 'translateX(0)';
             }
 
-            // Switch forms with slide animation
             const currentForm = currentTab === 'login' ? loginForm : registerForm;
             const nextForm = tabType === 'login' ? loginForm : registerForm;
 
-            // Slide out current form
             currentForm.style.transform = tabType === 'login' ? 'translateX(50px)' : 'translateX(-50px)';
             currentForm.style.opacity = '0';
             
             setTimeout(() => {
                 currentForm.classList.remove('active');
-                
-                // Prepare next form position
                 nextForm.style.transform = tabType === 'login' ? 'translateX(-50px)' : 'translateX(50px)';
                 nextForm.classList.add('active');
                 
-                // Slide in next form
                 setTimeout(() => {
                     nextForm.style.transform = 'translateX(0)';
                     nextForm.style.opacity = '1';
@@ -59,44 +56,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Login Form Handler
-    loginFormElement.addEventListener('submit', (e) => {
+    // Login Form Handler - CONNECT TO API
+    loginFormElement.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const username = document.getElementById('login-username').value.trim();
         const password = document.getElementById('login-password').value;
         const rememberMe = document.getElementById('remember').checked;
 
-        // Validasi
         if (!username || !password) {
             alert('Username dan Password harus diisi!');
             return;
         }
 
-        // Simpan ke localStorage jika "Ingat Saya" dicentang
-        if (rememberMe) {
-            saveToLocalStorage('rememberedUser', {
-                username: username,
-                timestamp: new Date().getTime()
-            });
-        } else {
-            removeFromLocalStorage('rememberedUser');
-        }
+        // Show loading
+        const submitBtn = loginFormElement.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Loading...';
+        submitBtn.disabled = true;
 
-        // TODO: Nanti ini bisa diintegrasikan dengan backend/database
-        console.log('Login attempt:', { username, rememberMe });
-        
-        // Save current user session
-        saveToLocalStorage('currentUser', {
-            username: username,
-            kelas: 'XII' // Nanti diambil dari database
-        });
-        
-        // Save login time for 24-hour session
-        saveToLocalStorage('loginTime', new Date().getTime());
-        
-        // Redirect ke chat.html
-        window.location.href = 'chat.html';
+        try {
+            // Call Login API
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Save token & user data
+                localStorage.setItem('authToken', data.token);
+                saveToLocalStorage('currentUser', data.user);
+                saveToLocalStorage('loginTime', new Date().getTime());
+                
+                if (rememberMe) {
+                    saveToLocalStorage('rememberedUser', {
+                        username: username,
+                        timestamp: new Date().getTime()
+                    });
+                } else {
+                    removeFromLocalStorage('rememberedUser');
+                }
+
+                // Redirect
+                window.location.href = 'chat.html';
+            } else {
+                alert(data.error || 'Login gagal! Username atau password salah.');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('Gagal connect ke server. Cek koneksi internet atau hubungi admin.');
+        } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
     });
 
     // Register Form Handler
@@ -106,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('register-username').value.trim();
         const kelas = document.getElementById('register-kelas').value;
 
-        // Validasi
         if (!username) {
             alert('Nama asli harus diisi!');
             return;
@@ -117,30 +133,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Kirim ke WhatsApp
         sendToWhatsApp(username, kelas, WHATSAPP_NUMBER);
-        
-        // Reset form
         registerFormElement.reset();
     });
 
     // Check if user wants to be remembered
     const rememberedUser = getFromLocalStorage('rememberedUser');
     if (rememberedUser) {
-        // Auto-fill username
         document.getElementById('login-username').value = rememberedUser.username;
         document.getElementById('remember').checked = true;
     }
 
-    // Prevent placeholder label overlap on autofill
     const inputs = document.querySelectorAll('.input-group input');
     inputs.forEach(input => {
-        // Check if input has value on load (autofill)
         if (input.value !== '') {
             input.classList.add('has-value');
         }
 
-        // Add class when input has value
         input.addEventListener('input', () => {
             if (input.value !== '') {
                 input.classList.add('has-value');
