@@ -1,5 +1,10 @@
 /* Profile Page Styles */
 
+body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .profile-container {
     position: relative;
     z-index: 10;
@@ -11,7 +16,7 @@
     border-radius: 30px;
     box-shadow: 0 25px 80px rgba(138, 43, 226, 0.5);
     border: 1px solid rgba(138, 43, 226, 0.3);
-    overflow: hidden;
+    overflow: visible;
     animation: slideInUp 0.8s ease-out;
     margin: 20px auto;
 }
@@ -167,12 +172,17 @@
 
 .toggle-password {
     position: absolute;
-    right: 15px;
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.5);
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(138, 43, 226, 0.1);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
-    padding: 5px;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -182,7 +192,13 @@
 
 .toggle-password:hover {
     color: #8a2be2;
-    transform: scale(1.1);
+    background: rgba(138, 43, 226, 0.2);
+    border-color: #8a2be2;
+    transform: translateY(-50%) scale(1.05);
+}
+
+.toggle-password:active {
+    transform: translateY(-50%) scale(0.95);
 }
 
 .help-text {
