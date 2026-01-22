@@ -1,6 +1,7 @@
 {
   "name": "moedakla-roomchat",
   "version": "1.0.0",
+  "type": "module",
   "description": "Anonymous Room Chat Application",
   "main": "index.html",
   "scripts": {
