@@ -1,9 +1,8 @@
 import { sql } from '@vercel/postgres';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 
-// Middleware to verify JWT
 function verifyToken(req) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) throw new Error('No token provided');
@@ -11,12 +10,19 @@ function verifyToken(req) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Verify authentication
     const decoded = verifyToken(req);
     const userId = decoded.userId;
 
@@ -26,11 +32,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid message data' });
     }
 
-    // Check if user is in their own class room
+    // Check balance
     const userKelas = decoded.kelas.toLowerCase();
     const isOwnClass = roomType === `kelas-${userKelas}`;
 
-    // Check balance if not in own class
     if (!isOwnClass) {
       const balanceResult = await sql`
         SELECT balance, last_reset FROM daily_balances
@@ -45,7 +50,6 @@ export default async function handler(req, res) {
         const now = new Date();
         const hoursPassed = (now - lastReset) / (1000 * 60 * 60);
 
-        // Reset balance if 24 hours passed
         if (hoursPassed >= 24) {
           await sql`
             UPDATE daily_balances
@@ -57,7 +61,6 @@ export default async function handler(req, res) {
           balance = row.balance;
         }
       } else {
-        // Create initial balance
         await sql`
           INSERT INTO daily_balances (user_id, room_type, balance)
           VALUES (${userId}, ${roomType}, 20)
@@ -68,7 +71,6 @@ export default async function handler(req, res) {
         return res.status(429).json({ error: 'Daily message limit reached' });
       }
 
-      // Decrease balance
       await sql`
         UPDATE daily_balances
         SET balance = balance - 1
@@ -79,28 +81,21 @@ export default async function handler(req, res) {
     // Insert message
     const result = await sql`
       INSERT INTO messages (user_id, username, room_type, message_text, is_voice, voice_duration)
-      VALUES (${userId}, ${decoded.username}, ${roomType}, ${messageText}, ${isVoice || false}, ${voiceDuration})
+      VALUES (${userId}, ${decoded.username}, ${roomType}, ${messageText || null}, ${isVoice || false}, ${voiceDuration || null})
       RETURNING id, created_at
     `;
 
-    // Get last 100 messages for this room
-    const messages = await sql`
-      SELECT m.*, u.avatar
-      FROM messages m
-      LEFT JOIN users u ON m.user_id = u.id
-      WHERE m.room_type = ${roomType}
-      ORDER BY m.created_at DESC
-      LIMIT 100
+    // Delete old messages (keep last 100)
+    await sql`
+      DELETE FROM messages
+      WHERE room_type = ${roomType}
+      AND id NOT IN (
+        SELECT id FROM messages
+        WHERE room_type = ${roomType}
+        ORDER BY created_at DESC
+        LIMIT 100
+      )
     `;
-
-    // Delete old messages (keep only last 100)
-    if (messages.rows.length >= 100) {
-      const oldestId = messages.rows[99].id;
-      await sql`
-        DELETE FROM messages
-        WHERE room_type = ${roomType} AND id < ${oldestId}
-      `;
-    }
 
     return res.status(201).json({
       success: true,
@@ -109,6 +104,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Send message error:', error);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
